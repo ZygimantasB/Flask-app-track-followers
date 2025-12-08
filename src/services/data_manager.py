@@ -1,3 +1,7 @@
+"""
+Data Manager for GitHub Followers Tracker.
+Handles file-based data storage for followers and ignore lists.
+"""
 import os
 import json
 import logging
@@ -5,12 +9,22 @@ from typing import List
 
 logger = logging.getLogger(__name__)
 
-PREVIOUS_FOLLOWERS_FILE = 'previous_followers.txt'
-NEW_FOLLOWERS_FILE = 'new_followers.json'
-IGNORE_LIST_FILE = 'ignore_list.txt'
+# Data files are stored in data/ folder
+DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'data')
+
+PREVIOUS_FOLLOWERS_FILE = os.path.join(DATA_DIR, 'previous_followers.txt')
+NEW_FOLLOWERS_FILE = os.path.join(DATA_DIR, 'new_followers.json')
+IGNORE_LIST_FILE = os.path.join(DATA_DIR, 'ignore_list.txt')
 
 
-def load_previous_followers():
+def _ensure_data_dir():
+    """Ensure data directory exists."""
+    if not os.path.exists(DATA_DIR):
+        os.makedirs(DATA_DIR, exist_ok=True)
+
+
+def load_previous_followers() -> List[str]:
+    """Load previous followers from file."""
     logger.debug("Loading previous followers")
     if os.path.exists(PREVIOUS_FOLLOWERS_FILE):
         with open(PREVIOUS_FOLLOWERS_FILE, 'r') as file:
@@ -22,7 +36,9 @@ def load_previous_followers():
     return []
 
 
-def save_followers(followers):
+def save_followers(followers: List[str]) -> None:
+    """Save followers to file."""
+    _ensure_data_dir()
     logger.debug(f"Saving {len(followers)} followers to file")
     with open(PREVIOUS_FOLLOWERS_FILE, 'w') as file:
         for follower in followers:
@@ -30,7 +46,8 @@ def save_followers(followers):
     logger.debug("Followers saved successfully")
 
 
-def load_new_followers():
+def load_new_followers() -> dict:
+    """Load new followers from JSON file."""
     logger.debug("Loading new followers")
     if os.path.exists(NEW_FOLLOWERS_FILE):
         try:
@@ -49,7 +66,9 @@ def load_new_followers():
     return {}
 
 
-def save_new_followers(new_followers):
+def save_new_followers(new_followers: dict) -> None:
+    """Save new followers to JSON file."""
+    _ensure_data_dir()
     logger.debug(f"Saving {len(new_followers)} new followers to file")
     with open(NEW_FOLLOWERS_FILE, 'w') as file:
         json.dump(new_followers, file)
@@ -57,10 +76,12 @@ def save_new_followers(new_followers):
 
 
 def _normalize_username(username: str) -> str:
+    """Normalize username for comparison."""
     return username.strip().lower()
 
 
 def load_ignore_list() -> List[str]:
+    """Load ignore list from file."""
     logger.debug("Loading ignore list")
     if os.path.exists(IGNORE_LIST_FILE):
         with open(IGNORE_LIST_FILE, 'r') as file:
@@ -84,7 +105,8 @@ def load_ignore_list() -> List[str]:
 
 
 def save_ignore_list(usernames: List[str]) -> List[str]:
-    """Persist the provided usernames (normalized, deduped) to IGNORE_LIST_FILE and return the saved list."""
+    """Persist the provided usernames to ignore list file."""
+    _ensure_data_dir()
     normalized = []
     seen = set()
     for name in usernames:

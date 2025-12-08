@@ -3,7 +3,7 @@ import logging
 import time
 import random
 from decouple import config
-from utils import chunks, load_cache, save_cache
+from src.services.cache import chunks, load_cache, save_cache
 from functools import lru_cache
 import concurrent.futures
 

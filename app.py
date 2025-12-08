@@ -6,7 +6,13 @@ import logging
 from logging.handlers import RotatingFileHandler
 from flask import Flask, render_template, request, jsonify
 from decouple import config
-from github_api import (
+from datetime import datetime, timedelta
+from apscheduler.schedulers.background import BackgroundScheduler
+import atexit
+import math
+
+# Import from src modules
+from src.core.github_api import (
     get_followers,
     get_following,
     follow_user,
@@ -19,7 +25,7 @@ from github_api import (
     check_if_user_follows_viewer,
     get_rate_limit_status,
 )
-from data_manager import (
+from src.services.data_manager import (
     load_previous_followers,
     save_followers,
     load_new_followers,
@@ -28,25 +34,17 @@ from data_manager import (
     add_to_ignore_list,
     remove_from_ignore_list,
 )
-from datetime import datetime, timedelta
-from apscheduler.schedulers.background import BackgroundScheduler
-import atexit
-import math
-
-# Import the task functions from the separate files
-from daily_tasks import run_daily_tasks
-from monthly_tasks import run_monthly_tasks
-
-# Import new modules
-from api_docs import api_docs
-from api_routes import api
-from database import (
+from src.core.database import (
     init_db, get_or_create_account, record_follower_event, take_daily_snapshot, log_action,
     sync_followers, sync_following, get_cached_followers, get_cached_following,
     get_cached_new_followers, get_cached_unfollowers, get_cached_not_following_back,
     is_cache_stale, get_all_sync_status, get_sync_status
 )
-from notifications import notification_service
+from src.tasks.daily import run_daily_tasks
+from src.tasks.monthly import run_monthly_tasks
+from src.api.docs import api_docs
+from src.api.routes import api
+from src.services.notifications import notification_service
 
 app = Flask(__name__)
 
@@ -57,7 +55,12 @@ app.register_blueprint(api)
 GITHUB_USERNAME = config('GITHUB_USERNAME')
 GITHUB_TOKEN = config('GITHUB_TOKEN')
 
-LOG_FILE = 'app.log'
+LOG_FILE = 'logs/app.log'
+
+# Ensure directories exist
+import os
+os.makedirs('logs', exist_ok=True)
+os.makedirs('data', exist_ok=True)
 
 # Set up logging configuration
 logger = logging.getLogger()

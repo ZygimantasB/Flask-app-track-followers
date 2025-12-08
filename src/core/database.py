@@ -14,7 +14,7 @@ from contextlib import contextmanager
 logger = logging.getLogger(__name__)
 
 # Database configuration
-DB_PATH = os.getenv('GFT_DATABASE_PATH', 'github_tracker.db')
+DB_PATH = os.getenv('GFT_DATABASE_PATH', 'data/github_tracker.db')
 DATABASE_URL = f'sqlite:///{DB_PATH}'
 
 # Create engine with optimizations

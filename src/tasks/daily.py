@@ -1,13 +1,14 @@
+"""
+Daily scheduled tasks for GitHub Followers Tracker.
+"""
 import logging
-import random
-from github_api import (
-    bulk_follow_users,
-    get_random_users,
-)
+from src.core.github_api import bulk_follow_users, get_random_users
 
 logger = logging.getLogger('daily_tasks')
 
+
 def run_daily_tasks():
+    """Execute daily tasks - follow suggested users."""
     logger.info("Starting daily tasks")
 
     # Get suggested users

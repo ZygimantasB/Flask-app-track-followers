@@ -18,7 +18,7 @@ api = Blueprint('api', __name__, url_prefix='/api')
 
 def get_current_account_id() -> int:
     """Get the current account ID from request or default."""
-    from database import get_session, Account
+    from src.core.database import get_session, Account
 
     # Check if account_id is specified in request
     account_id = request.args.get('account_id') or request.json.get('account_id') if request.is_json else None
@@ -58,7 +58,7 @@ def require_account(f):
 @require_account
 def get_analytics():
     """Get analytics data."""
-    from database import get_analytics as db_get_analytics
+    from src.core.database import get_analytics as db_get_analytics
 
     days = request.args.get('days', 30, type=int)
     days = min(days, 365)  # Max 1 year
@@ -71,7 +71,7 @@ def get_analytics():
 @require_account
 def get_history():
     """Get follower history events."""
-    from database import get_session, FollowerHistory
+    from src.core.database import get_session, FollowerHistory
 
     days = request.args.get('days', 30, type=int)
     event_type = request.args.get('event_type')
@@ -117,7 +117,7 @@ def get_history():
 @api.route('/rate-limit')
 def get_rate_limit():
     """Get GitHub API rate limit status."""
-    from github_api import get_rate_limit_status
+    from src.core.github_api import get_rate_limit_status
 
     try:
         rate_limit = get_rate_limit_status()
@@ -137,8 +137,8 @@ def get_rate_limit():
 @require_account
 def export_data():
     """Export data as JSON or CSV."""
-    from database import get_session, FollowerHistory, FollowerSnapshot, get_analytics
-    from github_api import get_followers_with_counts, get_following
+    from src.core.database import get_session, FollowerHistory, FollowerSnapshot, get_analytics
+    from src.core.github_api import get_followers_with_counts, get_following
 
     export_format = request.args.get('format', 'json')
     export_type = request.args.get('type', 'followers')
@@ -224,7 +224,7 @@ def export_data():
 @require_account
 def get_whitelist():
     """Get whitelisted users."""
-    from database import get_session, UserMetadata
+    from src.core.database import get_session, UserMetadata
 
     with get_session() as session:
         users = session.query(UserMetadata).filter_by(
@@ -241,7 +241,7 @@ def get_whitelist():
 @require_account
 def add_to_whitelist():
     """Add user to whitelist."""
-    from database import get_session, UserMetadata
+    from src.core.database import get_session, UserMetadata
 
     data = request.get_json(silent=True) or {}
     username = (data.get('username') or '').strip().lower()
@@ -278,7 +278,7 @@ def add_to_whitelist():
 @require_account
 def remove_from_whitelist():
     """Remove user from whitelist."""
-    from database import get_session, UserMetadata
+    from src.core.database import get_session, UserMetadata
 
     data = request.get_json(silent=True) or {}
     username = (data.get('username') or '').strip().lower()
@@ -309,7 +309,7 @@ def remove_from_whitelist():
 @require_account
 def get_user_metadata(username):
     """Get metadata for a user."""
-    from database import get_session, UserMetadata
+    from src.core.database import get_session, UserMetadata
 
     username = username.strip().lower()
 
@@ -349,7 +349,7 @@ def get_user_metadata(username):
 @require_account
 def update_user_metadata(username):
     """Update metadata for a user."""
-    from database import get_session, UserMetadata
+    from src.core.database import get_session, UserMetadata
 
     username = username.strip().lower()
     data = request.get_json(silent=True) or {}
@@ -391,7 +391,7 @@ def update_user_metadata(username):
 @require_account
 def get_all_tags():
     """Get all tags with user counts."""
-    from database import get_session, UserMetadata
+    from src.core.database import get_session, UserMetadata
     from collections import Counter
 
     with get_session() as session:
@@ -418,7 +418,7 @@ def get_all_tags():
 @require_account
 def get_users_by_tag(tag):
     """Get users with a specific tag."""
-    from database import get_session, UserMetadata
+    from src.core.database import get_session, UserMetadata
 
     tag = tag.strip().lower()
 
@@ -453,7 +453,7 @@ def get_users_by_tag(tag):
 @require_account
 def get_deadlines():
     """Get users with follow-back deadlines."""
-    from database import get_session, UserMetadata
+    from src.core.database import get_session, UserMetadata
 
     with get_session() as session:
         users = session.query(UserMetadata).filter(
@@ -480,7 +480,7 @@ def get_deadlines():
 @require_account
 def set_deadline(username):
     """Set follow-back deadline for a user."""
-    from database import get_session, UserMetadata
+    from src.core.database import get_session, UserMetadata
 
     username = username.strip().lower()
     data = request.get_json(silent=True) or {}
@@ -518,7 +518,7 @@ def set_deadline(username):
 @require_account
 def remove_deadline(username):
     """Remove follow-back deadline for a user."""
-    from database import get_session, UserMetadata
+    from src.core.database import get_session, UserMetadata
 
     username = username.strip().lower()
 
@@ -539,7 +539,7 @@ def remove_deadline(username):
 @api.route('/accounts', methods=['GET'])
 def list_accounts():
     """List all accounts."""
-    from database import get_session, Account
+    from src.core.database import get_session, Account
 
     with get_session() as session:
         accounts = session.query(Account).all()
@@ -560,7 +560,7 @@ def list_accounts():
 @api.route('/accounts', methods=['POST'])
 def create_account():
     """Create a new account."""
-    from database import get_or_create_account
+    from src.core.database import get_or_create_account
 
     data = request.get_json(silent=True) or {}
     username = data.get('username', '').strip()
@@ -585,7 +585,7 @@ def create_account():
 @api.route('/accounts/<int:account_id>', methods=['GET'])
 def get_account(account_id):
     """Get account details."""
-    from database import get_session, Account
+    from src.core.database import get_session, Account
 
     with get_session() as session:
         account = session.query(Account).filter_by(id=account_id).first()
@@ -604,7 +604,7 @@ def get_account(account_id):
 @api.route('/accounts/<int:account_id>', methods=['PUT'])
 def update_account(account_id):
     """Update account settings."""
-    from database import get_session, Account
+    from src.core.database import get_session, Account
 
     data = request.get_json(silent=True) or {}
 
@@ -632,7 +632,7 @@ def update_account(account_id):
 @api.route('/accounts/<int:account_id>', methods=['DELETE'])
 def delete_account(account_id):
     """Delete an account."""
-    from database import get_session, Account
+    from src.core.database import get_session, Account
 
     with get_session() as session:
         account = session.query(Account).filter_by(id=account_id).first()
@@ -646,7 +646,7 @@ def delete_account(account_id):
 @api.route('/accounts/<int:account_id>/switch', methods=['POST'])
 def switch_account(account_id):
     """Switch to a different account."""
-    from database import get_session, Account
+    from src.core.database import get_session, Account
 
     with get_session() as session:
         account = session.query(Account).filter_by(id=account_id).first()
@@ -669,7 +669,7 @@ def switch_account(account_id):
 @require_account
 def list_webhooks():
     """List webhooks."""
-    from database import get_session, Webhook
+    from src.core.database import get_session, Webhook
 
     with get_session() as session:
         webhooks = session.query(Webhook).filter_by(account_id=g.account_id).all()
@@ -694,7 +694,7 @@ def list_webhooks():
 @require_account
 def create_webhook():
     """Create a webhook."""
-    from database import get_session, Webhook
+    from src.core.database import get_session, Webhook
 
     data = request.get_json(silent=True) or {}
     name = data.get('name', '').strip()
@@ -728,7 +728,7 @@ def create_webhook():
 @require_account
 def update_webhook(webhook_id):
     """Update a webhook."""
-    from database import get_session, Webhook
+    from src.core.database import get_session, Webhook
 
     data = request.get_json(silent=True) or {}
 
@@ -766,7 +766,7 @@ def update_webhook(webhook_id):
 @require_account
 def delete_webhook(webhook_id):
     """Delete a webhook."""
-    from database import get_session, Webhook
+    from src.core.database import get_session, Webhook
 
     with get_session() as session:
         webhook = session.query(Webhook).filter_by(
@@ -785,8 +785,8 @@ def delete_webhook(webhook_id):
 @require_account
 def test_webhook(webhook_id):
     """Test a webhook."""
-    from database import get_session, Webhook
-    from notifications import WebhookManager
+    from src.core.database import get_session, Webhook
+    from src.services.notifications import WebhookManager
 
     with get_session() as session:
         webhook = session.query(Webhook).filter_by(
@@ -823,7 +823,7 @@ def test_webhook(webhook_id):
 @require_account
 def get_schedule():
     """Get schedule configuration."""
-    from database import get_session, ScheduleConfig
+    from src.core.database import get_session, ScheduleConfig
 
     with get_session() as session:
         configs = session.query(ScheduleConfig).filter_by(account_id=g.account_id).all()
@@ -850,7 +850,7 @@ def get_schedule():
 @require_account
 def update_schedule():
     """Update schedule configuration."""
-    from database import get_session, ScheduleConfig
+    from src.core.database import get_session, ScheduleConfig
 
     data = request.get_json(silent=True) or {}
     task_name = data.get('task_name')
@@ -913,7 +913,7 @@ def run_scheduled_task():
         if dry_run:
             # Return preview without executing
             if task == 'daily_follow':
-                from github_api import get_random_users
+                from src.core.github_api import get_random_users
                 users = get_random_users()
                 return jsonify({
                     'task': task,
@@ -921,8 +921,8 @@ def run_scheduled_task():
                     'would_follow': [u['login'] for u in users]
                 })
             else:
-                from github_api import get_followers, get_following
-                from data_manager import load_ignore_list
+                from src.core.github_api import get_followers, get_following
+                from src.services.data_manager import load_ignore_list
                 followers = set(f.lower() for f in get_followers())
                 following = get_following()
                 ignore_list = set(load_ignore_list())
@@ -954,7 +954,7 @@ def run_scheduled_task():
 @require_account
 def get_action_history():
     """Get action history."""
-    from database import get_recent_actions
+    from src.core.database import get_recent_actions
 
     page = request.args.get('page', 1, type=int)
     per_page = min(request.args.get('per_page', 50, type=int), 100)
@@ -976,8 +976,8 @@ def get_action_history():
 @require_account
 def undo_action(action_id):
     """Undo an action."""
-    from database import get_session, ActionLog
-    from github_api import follow_user, unfollow_user, bulk_follow_users, bulk_unfollow_users
+    from src.core.database import get_session, ActionLog
+    from src.core.github_api import follow_user, unfollow_user, bulk_follow_users, bulk_unfollow_users
 
     with get_session() as session:
         action = session.query(ActionLog).filter_by(
@@ -1029,7 +1029,7 @@ def undo_action(action_id):
 @require_account
 def get_notification_config():
     """Get notification configuration."""
-    from database import get_session, NotificationConfig
+    from src.core.database import get_session, NotificationConfig
 
     with get_session() as session:
         config = session.query(NotificationConfig).filter_by(account_id=g.account_id).first()
@@ -1066,7 +1066,7 @@ def get_notification_config():
 @require_account
 def update_notification_config():
     """Update notification configuration."""
-    from database import get_session, NotificationConfig
+    from src.core.database import get_session, NotificationConfig
 
     data = request.get_json(silent=True) or {}
 

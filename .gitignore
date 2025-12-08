@@ -1,24 +1,48 @@
-### Extensions
-*.sqlite
-*.sqlite3
-*.db*
-.cadence
-.qodo
-.claude
+### Project-specific ###
+
+# Data files (in data/ folder)
+data/*.db
+data/*.db-*
+data/ignore_list.txt
+data/new_followers.json
+data/previous_followers.txt
+data/user_following_cache.json
+
+# Log files (in logs/ folder)
+logs/*.log
+logs/*.log.*
+
+# Legacy locations (root folder) - keep for backward compatibility
+*.db
+*.db-*
+ignore_list.txt
+new_followers.json
+previous_followers.txt
+user_following_cache.json
+*.log
+*.log.*
+
+# Environment
+.env
+
+# Cache
+cache/
+__pycache__/
+*.pyc
+*.pyo
+
+### IDE ###
+.cadence/
+.qodo/
+.claude/
+.idea/
+*.xml
+*.iml
+*.iws
 
 ### PyCharm+iml template
 # Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio, WebStorm and Rider
 # Reference: https://intellij-support.jetbrains.com/hc/en-us/articles/206544839
-
-user_following_cache.json
-cache
-.env
-*.xml
-*.iml
-ignore_list.txt
-new_followers.json
-previous_followers.txt
-app.log.*
 
 # User-specific stuff
 .idea/**/workspace.xml

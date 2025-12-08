@@ -9,7 +9,7 @@ import logging
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import List, Dict, Any, Optional
 import requests
 from concurrent.futures import ThreadPoolExecutor
@@ -53,7 +53,6 @@ class WebhookManager:
 
             body = json.dumps(payload, default=str)
 
-            # Add HMAC signature if secret is provided
             if secret:
                 signature = hmac.new(
                     secret.encode('utf-8'),
@@ -127,10 +126,8 @@ class EmailNotifier:
             msg['From'] = self.smtp_username or self.email_address
             msg['To'] = self.email_address
 
-            # Add plain text
             msg.attach(MIMEText(body, 'plain'))
 
-            # Add HTML if provided
             if html_body:
                 msg.attach(MIMEText(html_body, 'html'))
 
@@ -154,11 +151,11 @@ class NotificationService:
 
     def __init__(self):
         self.webhook_manager = WebhookManager()
-        self._email_notifiers = {}  # Cache by account_id
+        self._email_notifiers = {}
 
     def get_email_notifier(self, account_id: int) -> Optional[EmailNotifier]:
         """Get or create email notifier for an account."""
-        from database import get_session, NotificationConfig
+        from src.core.database import get_session, NotificationConfig
 
         if account_id not in self._email_notifiers:
             with get_session() as session:
@@ -183,7 +180,7 @@ class NotificationService:
 
     def get_webhooks(self, account_id: int) -> List[Dict]:
         """Get active webhooks for an account."""
-        from database import get_session, Webhook
+        from src.core.database import get_session, Webhook
 
         with get_session() as session:
             webhooks = session.query(Webhook).filter_by(
@@ -214,7 +211,6 @@ class NotificationService:
             }
         )
 
-        # Email notification
         notifier = self.get_email_notifier(account_id)
         if notifier:
             notifier.send_email(
@@ -278,8 +274,7 @@ class NotificationService:
 
     def check_milestones(self, account_id: int, follower_count: int, following_count: int):
         """Check and trigger milestone notifications."""
-        from database import get_session, NotificationConfig, Milestone
-        import json
+        from src.core.database import get_session, NotificationConfig, Milestone
 
         with get_session() as session:
             config = session.query(NotificationConfig).filter_by(
@@ -291,7 +286,6 @@ class NotificationService:
 
             thresholds = json.loads(config.milestone_thresholds or '[100, 500, 1000, 5000, 10000]')
 
-            # Check follower milestones
             for threshold in thresholds:
                 if follower_count >= threshold:
                     existing = session.query(Milestone).filter_by(
@@ -312,12 +306,12 @@ class NotificationService:
 
     def send_daily_digest(self, account_id: int):
         """Send daily digest email."""
-        from database import get_analytics
+        from src.core.database import get_analytics
 
         analytics = get_analytics(account_id, days=1)
 
         if not analytics['events']:
-            return  # No activity to report
+            return
 
         webhooks = self.get_webhooks(account_id)
         self.webhook_manager.trigger_event(
@@ -328,7 +322,6 @@ class NotificationService:
 
         notifier = self.get_email_notifier(account_id)
         if notifier:
-            summary = analytics['summary']
             events = analytics['events']
 
             gained = [e for e in events if e['type'] == 'followed']
@@ -354,7 +347,7 @@ Summary:
 
     def send_weekly_digest(self, account_id: int):
         """Send weekly digest email."""
-        from database import get_analytics
+        from src.core.database import get_analytics
 
         analytics = get_analytics(account_id, days=7)
 
