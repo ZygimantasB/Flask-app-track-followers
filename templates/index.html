@@ -16,9 +16,16 @@
     <h1>GitHub Follower Tracker</h1>
   </div>
   <nav class="main-nav">
+    <div class="rate-limit-indicator" id="rate-limit-indicator" title="GitHub API Rate Limit">
+      <i class="fas fa-tachometer-alt"></i>
+      <span id="rate-limit-remaining">--</span>/<span id="rate-limit-total">--</span>
+    </div>
     <button id="theme-toggle" class="theme-toggle">
       <i class="fas fa-moon"></i>
     </button>
+    <a href="/api/docs" class="btn btn-sm btn-secondary" target="_blank" title="API Documentation">
+      <i class="fas fa-book"></i>
+    </a>
   </nav>
 </header>
 
@@ -79,27 +86,165 @@
     <p>Loading data, please wait...</p>
   </div>
 
-  <!-- Ignore List Management -->
-  <section id="ignore-list-section" class="card">
+  <!-- User Preview Modal -->
+  <div id="user-preview-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <span class="modal-close" onclick="closeUserPreview()">&times;</span>
+      <div id="user-preview-content">
+        <div class="preview-header">
+          <img id="preview-avatar" src="" alt="Avatar" class="preview-avatar">
+          <div class="preview-info">
+            <h3 id="preview-username"></h3>
+            <p id="preview-bio"></p>
+          </div>
+        </div>
+        <div class="preview-stats">
+          <div class="stat">
+            <span class="stat-value" id="preview-followers">0</span>
+            <span class="stat-label">Followers</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value" id="preview-following">0</span>
+            <span class="stat-label">Following</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value" id="preview-repos">0</span>
+            <span class="stat-label">Repos</span>
+          </div>
+        </div>
+        <div class="preview-actions">
+          <a id="preview-github-link" href="#" target="_blank" class="btn btn-primary">
+            <i class="fab fa-github"></i> View on GitHub
+          </a>
+          <button id="preview-follow-btn" class="btn btn-success" onclick="followFromPreview()">
+            <i class="fas fa-user-plus"></i> Follow
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Management Tools -->
+  <section class="management-tools">
+    <!-- Ignore List -->
+    <div id="ignore-list-section" class="card management-card">
+      <div class="card-header">
+        <h2><i class="fas fa-ban"></i> Ignore List (<span id="ignore-list-count">0</span>)</h2>
+        <div class="card-actions">
+          <button class="btn btn-primary btn-sm" id="refresh-ignore-list">
+            <i class="fas fa-sync-alt"></i>
+          </button>
+          <button class="btn btn-secondary btn-sm toggle-btn" onclick="toggleVisibility('ignore-list')">
+            <i class="fas fa-chevron-down"></i>
+          </button>
+        </div>
+      </div>
+      <div class="card-body">
+        <form id="ignore-list-form" class="input-group">
+          <input type="text" id="ignore-username-input" placeholder="Username to ignore">
+          <button type="submit" class="btn btn-warning btn-sm">
+            <i class="fas fa-plus"></i> Add
+          </button>
+        </form>
+        <ul id="ignore-list" class="collapsible-list mini-list" style="max-height: 0; overflow: hidden;"></ul>
+      </div>
+    </div>
+
+    <!-- Whitelist -->
+    <div id="whitelist-section" class="card management-card">
+      <div class="card-header">
+        <h2><i class="fas fa-star"></i> Whitelist (<span id="whitelist-count">0</span>)</h2>
+        <div class="card-actions">
+          <button class="btn btn-primary btn-sm" id="refresh-whitelist">
+            <i class="fas fa-sync-alt"></i>
+          </button>
+          <button class="btn btn-secondary btn-sm toggle-btn" onclick="toggleVisibility('whitelist')">
+            <i class="fas fa-chevron-down"></i>
+          </button>
+        </div>
+      </div>
+      <div class="card-body">
+        <form id="whitelist-form" class="input-group">
+          <input type="text" id="whitelist-username-input" placeholder="Username to whitelist">
+          <button type="submit" class="btn btn-success btn-sm">
+            <i class="fas fa-plus"></i> Add
+          </button>
+        </form>
+        <ul id="whitelist" class="collapsible-list mini-list" style="max-height: 0; overflow: hidden;"></ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- Analytics Section -->
+  <section id="analytics-section" class="card">
     <div class="card-header">
-      <h2><i class="fas fa-ban"></i> Ignore List (<span id="ignore-list-count">0</span>)</h2>
+      <h2><i class="fas fa-chart-line"></i> Analytics</h2>
       <div class="card-actions">
-        <button class="btn btn-primary" id="refresh-ignore-list">
-          <i class="fas fa-sync-alt"></i> Refresh
+        <select id="analytics-period" class="select-sm">
+          <option value="7">Last 7 days</option>
+          <option value="30" selected>Last 30 days</option>
+          <option value="90">Last 90 days</option>
+        </select>
+        <button class="btn btn-primary btn-sm" id="load-analytics">
+          <i class="fas fa-sync-alt"></i> Load
         </button>
-        <button class="btn btn-secondary toggle-btn" onclick="toggleVisibility('ignore-list')">
+        <button class="btn btn-secondary btn-sm toggle-btn" onclick="toggleVisibility('analytics-content')">
           <i class="fas fa-chevron-down"></i>
         </button>
       </div>
     </div>
-    <div class="card-body">
-      <form id="ignore-list-form" class="input-group">
-        <input type="text" id="ignore-username-input" placeholder="Enter username to ignore" required>
-        <button type="submit" class="btn btn-warning">
-          <i class="fas fa-user-slash"></i> Add to Ignore
-        </button>
-      </form>
-      <ul id="ignore-list" class="collapsible-list" style="max-height: 0; overflow: hidden;"></ul>
+    <div id="analytics-content" class="card-body collapsible-list" style="max-height: 0; overflow: hidden;">
+      <div class="analytics-summary">
+        <div class="analytics-stat">
+          <span class="analytics-value" id="analytics-growth">+0</span>
+          <span class="analytics-label">Net Growth</span>
+        </div>
+        <div class="analytics-stat">
+          <span class="analytics-value" id="analytics-rate">0%</span>
+          <span class="analytics-label">Growth Rate</span>
+        </div>
+        <div class="analytics-stat">
+          <span class="analytics-value" id="analytics-gained">0</span>
+          <span class="analytics-label">Gained</span>
+        </div>
+        <div class="analytics-stat">
+          <span class="analytics-value" id="analytics-lost">0</span>
+          <span class="analytics-label">Lost</span>
+        </div>
+      </div>
+      <div id="analytics-chart" class="analytics-chart">
+        <!-- Chart placeholder -->
+        <p class="chart-placeholder">Load analytics to see growth chart</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Export Section -->
+  <section id="export-section" class="card">
+    <div class="card-header">
+      <h2><i class="fas fa-download"></i> Export Data</h2>
+    </div>
+    <div class="card-body export-options">
+      <div class="export-group">
+        <label>Data Type:</label>
+        <select id="export-type">
+          <option value="followers">Followers</option>
+          <option value="following">Following</option>
+          <option value="history">History</option>
+          <option value="analytics">Analytics</option>
+          <option value="all">All Data</option>
+        </select>
+      </div>
+      <div class="export-group">
+        <label>Format:</label>
+        <select id="export-format">
+          <option value="json">JSON</option>
+          <option value="csv">CSV</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" id="export-btn">
+        <i class="fas fa-download"></i> Export
+      </button>
     </div>
   </section>
 
@@ -129,6 +274,25 @@
       </button>
     </div>
 
+    <!-- Search and Sort Controls -->
+    <div class="list-controls">
+      <div class="search-control">
+        <input type="text" id="list-search" placeholder="Search users..." class="search-input">
+        <i class="fas fa-search search-icon"></i>
+      </div>
+      <div class="sort-control">
+        <label>Sort by:</label>
+        <select id="sort-by">
+          <option value="username">Username</option>
+          <option value="followers">Followers</option>
+          <option value="following">Following</option>
+        </select>
+        <button id="sort-order" class="btn btn-sm btn-secondary" title="Toggle sort order">
+          <i class="fas fa-sort-amount-down"></i>
+        </button>
+      </div>
+    </div>
+
     <!-- Tab Content -->
     <div class="tab-content">
       <!-- Followers Tab -->
@@ -149,9 +313,8 @@
             </div>
           </div>
           <div class="card-body">
-            <ul id="followers-list" class="user-list collapsible-list">
-              <!-- Followers will be populated here -->
-            </ul>
+            <ul id="followers-list" class="user-list collapsible-list"></ul>
+            <div id="followers-pagination" class="pagination"></div>
           </div>
         </section>
       </div>
@@ -174,9 +337,8 @@
             </div>
           </div>
           <div class="card-body">
-            <ul id="following-list" class="user-list collapsible-list">
-              <!-- Following will be populated here -->
-            </ul>
+            <ul id="following-list" class="user-list collapsible-list"></ul>
+            <div id="following-pagination" class="pagination"></div>
           </div>
         </section>
       </div>
@@ -199,9 +361,8 @@
             </div>
           </div>
           <div class="card-body">
-            <ul id="new-followers-list" class="user-list collapsible-list">
-              <!-- New followers will be populated here -->
-            </ul>
+            <ul id="new-followers-list" class="user-list collapsible-list"></ul>
+            <div id="new-followers-pagination" class="pagination"></div>
           </div>
         </section>
       </div>
@@ -224,9 +385,8 @@
             </div>
           </div>
           <div class="card-body">
-            <ul id="unfollowers-list" class="user-list collapsible-list">
-              <!-- Unfollowers will be populated here -->
-            </ul>
+            <ul id="unfollowers-list" class="user-list collapsible-list"></ul>
+            <div id="unfollowers-pagination" class="pagination"></div>
           </div>
         </section>
       </div>
@@ -249,9 +409,8 @@
             </div>
           </div>
           <div class="card-body">
-            <ul id="not-following-back-list" class="user-list collapsible-list">
-              <!-- Not following back will be populated here -->
-            </ul>
+            <ul id="not-following-back-list" class="user-list collapsible-list"></ul>
+            <div id="not-following-back-pagination" class="pagination"></div>
           </div>
         </section>
       </div>
@@ -277,9 +436,8 @@
             </div>
           </div>
           <div class="card-body">
-            <ul id="suggested-users-list" class="user-list collapsible-list">
-              <!-- Suggested users will be populated here -->
-            </ul>
+            <ul id="suggested-users-list" class="user-list collapsible-list"></ul>
+            <div id="suggested-users-pagination" class="pagination"></div>
           </div>
         </section>
       </div>
@@ -299,9 +457,8 @@
             </div>
           </div>
           <div class="card-body">
-            <ul id="users-more-following-list" class="user-list collapsible-list">
-              <!-- Users will be populated here -->
-            </ul>
+            <ul id="users-more-following-list" class="user-list collapsible-list"></ul>
+            <div id="users-more-following-pagination" class="pagination"></div>
           </div>
         </section>
       </div>

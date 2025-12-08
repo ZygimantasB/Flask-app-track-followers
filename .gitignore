@@ -1,7 +1,7 @@
 ### Extensions
 *.sqlite
 *.sqlite3
-*.db
+*.db*
 .cadence
 .qodo
 .claude
