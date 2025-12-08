@@ -13,12 +13,30 @@ GITHUB_TOKEN = config('GITHUB_TOKEN')
 GITHUB_USERNAME = config('GITHUB_USERNAME')
 
 # Use a session for connection pooling and improved performance
+from urllib3.util.retry import Retry
+from requests.adapters import HTTPAdapter
+
 session = requests.Session()
 session.headers.update({
     'Authorization': f'Bearer {GITHUB_TOKEN}',
     'Content-Type': 'application/json',
     'Accept': 'application/vnd.github.v3+json'  # Explicitly requesting v3 API
 })
+
+# Configure connection pooling and retries for better performance
+retry_strategy = Retry(
+    total=3,
+    backoff_factor=0.5,
+    status_forcelist=[500, 502, 503, 504],
+    allowed_methods=["GET", "POST"]
+)
+adapter = HTTPAdapter(
+    pool_connections=10,
+    pool_maxsize=20,
+    max_retries=retry_strategy
+)
+session.mount("https://", adapter)
+session.mount("http://", adapter)
 
 # API rate limit management
 RATE_LIMIT_THRESHOLD = 100  # Minimum remaining requests before slowing down
@@ -37,13 +55,18 @@ def throttle_requests():
         current_time = time.time()
         elapsed_time = current_time - _last_request_time
 
-        # If we've made a request recently, wait a bit
+        # If we've made a request recently, calculate wait time
         if elapsed_time < MIN_REQUEST_INTERVAL:
             sleep_time = MIN_REQUEST_INTERVAL - elapsed_time
-            time.sleep(sleep_time)
+        else:
+            sleep_time = 0
 
-        # Update the last request time after potentially sleeping
-        _last_request_time = time.time()
+        # Update last request time BEFORE releasing lock
+        _last_request_time = current_time + sleep_time
+
+    # Sleep OUTSIDE the lock to allow other threads to proceed
+    if sleep_time > 0:
+        time.sleep(sleep_time)
 
 def execute_github_graphql_query(query, variables=None, retry_count=3):
     """Execute a GraphQL query with automatic retries and error handling."""
@@ -251,14 +274,39 @@ def get_users_info_parallel(usernames, max_workers=5):
     logger.info(f"Successfully fetched info for {len(users_info)} users")
     return users_info
 
+def _sanitize_username(username):
+    """Sanitize username for safe use in GraphQL queries.
+
+    GitHub usernames can only contain alphanumeric characters and hyphens,
+    and cannot begin with a hyphen.
+    """
+    if not username or not isinstance(username, str):
+        return None
+    # GitHub username rules: alphanumeric and hyphens only, max 39 chars
+    sanitized = ''.join(c for c in username if c.isalnum() or c == '-')
+    if not sanitized or sanitized.startswith('-') or len(sanitized) > 39:
+        return None
+    return sanitized
+
+
 def get_users_info_chunk(usernames):
     """Fetch info for a chunk of usernames."""
     if not usernames:
         return []
 
+    # Sanitize all usernames to prevent injection
+    sanitized_usernames = []
+    for username in usernames:
+        sanitized = _sanitize_username(username)
+        if sanitized:
+            sanitized_usernames.append(sanitized)
+
+    if not sanitized_usernames:
+        return []
+
     try:
         query_fragments = []
-        for index, username in enumerate(usernames):
+        for index, username in enumerate(sanitized_usernames):
             query_fragments.append(f'''
                 user_{index}: user(login: "{username}") {{
                     login
@@ -475,29 +523,31 @@ def get_followers_with_counts(batch_size=100):
     logger.info("Fetching followers with counts")
     followers = []
     cursor = None
+    # Ensure batch_size is within GitHub's limits (max 100)
+    batch_size = min(max(1, batch_size), 100)
 
     while True:
         try:
-            query = '''
-            query ($cursor: String) {
-              viewer {
-                followers(first: 100, after: $cursor) {
-                  nodes {
+            query = f'''
+            query ($cursor: String) {{
+              viewer {{
+                followers(first: {batch_size}, after: $cursor) {{
+                  nodes {{
                     login
-                    followers {
+                    followers {{
                       totalCount
-                    }
-                    following {
+                    }}
+                    following {{
                       totalCount
-                    }
-                  }
-                  pageInfo {
+                    }}
+                  }}
+                  pageInfo {{
                     hasNextPage
                     endCursor
-                  }
-                }
-              }
-            }
+                  }}
+                }}
+              }}
+            }}
             '''
             variables = {'cursor': cursor}
             result = execute_github_graphql_query(query, variables)
@@ -533,23 +583,25 @@ def get_followers(batch_size=100):
     logger.info("Fetching followers")
     followers = []
     cursor = None
+    # Ensure batch_size is within GitHub's limits (max 100)
+    batch_size = min(max(1, batch_size), 100)
 
     while True:
         try:
-            query = '''
-            query ($cursor: String) {
-              viewer {
-                followers(first: 100, after: $cursor) {
-                  nodes {
+            query = f'''
+            query ($cursor: String) {{
+              viewer {{
+                followers(first: {batch_size}, after: $cursor) {{
+                  nodes {{
                     login
-                  }
-                  pageInfo {
+                  }}
+                  pageInfo {{
                     hasNextPage
                     endCursor
-                  }
-                }
-              }
-            }
+                  }}
+                }}
+              }}
+            }}
             '''
             variables = {'cursor': cursor}
             result = execute_github_graphql_query(query, variables)
@@ -578,31 +630,33 @@ def get_following(batch_size=100):
     logger.info("Fetching following")
     following = []
     cursor = None
+    # Ensure batch_size is within GitHub's limits (max 100)
+    batch_size = min(max(1, batch_size), 100)
 
     while True:
         try:
-            query = '''
-            query ($cursor: String) {
-              viewer {
-                following(first: 100, after: $cursor) {
-                  nodes {
+            query = f'''
+            query ($cursor: String) {{
+              viewer {{
+                following(first: {batch_size}, after: $cursor) {{
+                  nodes {{
                     login
                     __typename
                     id
-                    followers {
+                    followers {{
                         totalCount
-                    }
-                    following {
+                    }}
+                    following {{
                         totalCount
-                    }
-                  }
-                  pageInfo {
+                    }}
+                  }}
+                  pageInfo {{
                     hasNextPage
                     endCursor
-                  }
-                }
-              }
-            }
+                  }}
+                }}
+              }}
+            }}
             '''
             variables = {'cursor': cursor}
             result = execute_github_graphql_query(query, variables)

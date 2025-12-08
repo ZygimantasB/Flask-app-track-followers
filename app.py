@@ -120,6 +120,8 @@ def get_data():
                 if datetime.fromisoformat(timestamp) >= current_time - timedelta(days=3)
             }
             save_new_followers(recent_new_followers)
+            # Update previous_followers to track changes for next time
+            save_followers(current_followers)
             new_followers_info = get_users_info(list(recent_new_followers.keys()))
             data = {'new_followers': new_followers_info}
             return jsonify(data)
@@ -128,6 +130,8 @@ def get_data():
             unfollowers = list(set(previous_followers) - set(current_followers))
             # Apply ignore list
             unfollowers = [user for user in unfollowers if user.lower() not in ignore_list]
+            # Update previous_followers to track changes for next time
+            save_followers(current_followers)
             unfollowers_info = get_users_info(unfollowers)
             data = {'unfollowers': unfollowers_info}
             return jsonify(data)
@@ -187,8 +191,23 @@ def bulk_unfollow():
     results = bulk_unfollow_users(usernames)
     return jsonify(results)
 
+def _is_valid_github_username(username):
+    """Validate GitHub username format."""
+    if not username or not isinstance(username, str):
+        return False
+    # GitHub usernames: alphanumeric and hyphens, 1-39 chars, can't start with hyphen
+    if len(username) > 39 or len(username) < 1:
+        return False
+    if username.startswith('-'):
+        return False
+    return all(c.isalnum() or c == '-' for c in username)
+
+
 @app.route('/unfollow/<username>', methods=['POST'])
 def unfollow(username):
+    if not _is_valid_github_username(username):
+        logger.warning(f'Invalid username format: {username}')
+        return jsonify({'success': False, 'message': 'Invalid username format'}), 400
     logger.info(f'Attempting to unfollow user: {username}')
     success, message = unfollow_user(username)
     if success:
@@ -198,6 +217,9 @@ def unfollow(username):
 
 @app.route('/follow/<username>', methods=['POST'])
 def follow(username):
+    if not _is_valid_github_username(username):
+        logger.warning(f'Invalid username format: {username}')
+        return jsonify({'success': False, 'message': 'Invalid username format'}), 400
     logger.info(f'Attempting to follow user: {username}')
     success, message = follow_user(username)
     if success:

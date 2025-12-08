@@ -166,13 +166,16 @@ document.addEventListener('DOMContentLoaded', function() {
             const data = await response.json();
             const searchResultDiv = document.getElementById('search-result');
             if (data.error) {
+                // Use textContent to prevent XSS
                 searchResultDiv.textContent = `Error: ${data.error}`;
             } else {
                 const followsYouText = data.follows_you ? 'follows you' : 'does not follow you';
-                searchResultDiv.textContent = `${username} ${followsYouText}.`;
+                // Use the returned username from server for consistency
+                searchResultDiv.textContent = `${data.username || username} ${followsYouText}.`;
             }
         } catch (error) {
             console.error('Error searching user:', error);
+            showNotification('Failed to search user', 'error');
         }
     }
 
