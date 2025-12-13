@@ -1,0 +1,27 @@
+# Development and testing dependencies
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-mock>=3.11.0
+pytest-asyncio>=0.21.0
+
+# Code quality
+ruff>=0.1.0
+black>=23.0.0
+isort>=5.12.0
+mypy>=1.5.0
+
+# Pre-commit hooks
+pre-commit>=3.4.0
+
+# Database migrations
+alembic>=1.12.0
+
+# Security/encryption
+cryptography>=41.0.0
+
+# Authentication
+Flask-Login>=0.6.2
+PyJWT>=2.8.0
+
+# Type stubs
+types-requests>=2.31.0
